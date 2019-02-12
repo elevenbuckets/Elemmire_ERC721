@@ -2,11 +2,17 @@ pragma solidity ^0.5.2;
 
 import "./ERC20/tokens/RNTInterface.sol";
 import "./Elemmire.sol";
+import "./ERC721/tokens/erc721.sol";
 
 contract EreborTrade {
 // public variables
-	address public owner;
-	address[3] public managers; // for now, they are the side-chain validator
+	using SafeMath for uint256;
+        address[3] public validators;  // for now, managers are also validators
+	address[3] public managers;
+	address public RNTAddr;
+	address public ELEMAddr;
+	uint public sidechainblockNo;  // the side-chain number pace controled by validators
+        bool public paused = true;  // manager need to make sure there are RNTAddr and ELEMAddr, then unpause
 	
 // side-block merkle root and tree DB
 	struct tradeStat {
@@ -24,20 +30,42 @@ contract EreborTrade {
 		bytes32 SellOrder;	// "S" hash
 	}
 
-	mapping (bytes32 => dealRecord) settleDB // "TH" (TradeHash) => dealRecord
+	mapping (bytes32 => dealRecord) settleDB; // "TH" (TradeHash) => dealRecord
 
 // modifier	
 	modifier managerOnly() {
-		require(msg.sender == managers[0] || msg.sender == manager[1] || msg.sender == manager[2]);
+	        require(msg.sender != address(0));
+		require(msg.sender == managers[0] || msg.sender == managers[1] || msg.sender == managers[2]);
 		_;
 	}
 
+	modifier validatorOnly() {
+	        require(msg.sender != address(0));
+		require(msg.sender == validators[0] || msg.sender == validators[1] || msg.sender == validators[2]);
+	        _;
+        }
+
+        modifier whenNotPaused() {
+                require(!paused);
+                _;
+        }
+
+        modifier whenPaused {
+                require(paused);
+                _;
+        }
+
 // constructor
-	constructor() public {
-		owner = msg.sender;
+	constructor(address _RNTAddr, address _ELEMAddr) public {
 		managers = [0xB440ea2780614b3c6a00e512f432785E7dfAFA3E,
                     	    0x4AD56641C569C91C64C28a904cda50AE5326Da41,
 			    0x362ea687b8a372a0235466a097e578d55491d37f];
+		validators = [0xB440ea2780614b3c6a00e512f432785E7dfAFA3E,
+                    	      0x4AD56641C569C91C64C28a904cda50AE5326Da41,
+			      0x362ea687b8a372a0235466a097e578d55491d37f];
+		RNTAddr = _RNTAddr;
+		ELEMAddr = _ELEMAddr;
+		sidechainblockNo = 0;
 	}
 
 // settle function call with merkle proof:
@@ -65,10 +93,90 @@ contract EreborTrade {
 //  - currently, sell order time-to-live is between 10-100 ETH blocks, while deal-time-to-live is fixed at 11 ETH blocks
 //    both started since their first inclusion in the side-block
 
+        function getTradeHash(
+            address sellerAddress,
+            address buyerAddress,
+            bytes32 SellOrderHash,
+            uint NFTTokenId,
+            uint RNTAmount
+        ) public pure returns (bytes32 _tradeHash){
+            _tradeHash = keccak256(abi.encodePacked(sellerAddress, buyerAddress, SellOrderHash, NFTTokenId, RNTAmount));
+        }
+
 	function settle(uint TradeDealMerkleOrigin, bytes32 TradeHash, 
-			address sellerAddress, bytes32 SellOrderHash, 
+			address sellerAddress, bytes32 SellOrderHash,
 			uint256 NFTTokenId, uint RNTAmount,
-			bytes32[] memory proof, bool[] memory isLeft) public returns (bool) 
-	{
+			bytes32[] memory proof, bool[] memory isLeft
+		       ) public validatorOnly whenNotPaused returns (bool) {
+		require(TradeHash == getTradeHash(sellerAddress, msg.sender, SellOrderHash, NFTTokenId, RNTAmount));
+	        require(merkleTreeValidator(proof, isLeft, TradeHash, merkleDB[TradeDealMerkleOrigin].merkleRoot));
+	        require(RNTAmount >= 10);  // 10 RNT = 1e-4 ETH which is likely less than gas fee
+
+	        // trasnfer token
+	        uint txFee1 = RNTAmount.mul(uint256(1) / uint256(1000));  // per validator
+	        settleDB[TradeHash] = dealRecord(sidechainblockNo, block.number, SellOrderHash);
+		require(RNTInterface(RNTAddr).transferFrom(msg.sender, sellerAddress, RNTAmount - txFee1*validators.length));
+		// unfair: not all validators really contribute to submitMerkleRoot. But it's okay for now.
+		require(RNTInterface(RNTAddr).transferFrom(msg.sender, validators[0], txFee1));
+		require(RNTInterface(RNTAddr).transferFrom(msg.sender, validators[1], txFee1));
+		require(RNTInterface(RNTAddr).transferFrom(msg.sender, validators[2], txFee1));
+		ERC721(ELEMAddr).safeTransferFrom(sellerAddress, msg.sender, NFTTokenId);
+		return true;
 	}
+
+	function submitMerkleRoot(bytes32 _merkleRoot, string memory _ipfsAddr) public validatorOnly whenNotPaused returns (bool){
+	        require(sidechainblockNo > 0 && merkleDB[sidechainblockNo-1].ETHBlockNo != block.number);  // avoid duplicate ETHBlockNo
+	        sidechainblockNo += 1;
+	        merkleDB[sidechainblockNo] = tradeStat(_merkleRoot, _ipfsAddr, block.number);
+	        return true;
+        }
+
+        function merkleTreeValidator(
+            bytes32[] memory proof,
+            bool[] memory isLeft,
+            bytes32 targetLeaf,
+            bytes32 _merkleRoot
+        ) public pure returns (bool) {
+                require(proof.length < 32);  // 2**32 ~ 4.3e9 leaves!
+                require(proof.length == isLeft.length);
+
+                bytes32 targetHash = targetLeaf;
+                for (uint256 i = 0; i < proof.length; i++) {
+                        bytes32 proofEle = proof[i]; 
+                        if (isLeft[i]) {
+                                targetHash = keccak256(abi.encodePacked(proofEle, targetHash));
+                        } else if (!isLeft[i]) {
+                                targetHash = keccak256(abi.encodePacked(targetHash, proofEle));
+                        } else {
+                                return false;
+                        }
+                }
+                return targetHash == _merkleRoot;
+        }
+
+        // upgrade address and validators
+        function newValidator(address _newValidator, uint8 _idx) public managerOnly returns (bool){
+                require(_newValidator != address(0));
+                require(_idx >= 0 && _idx < 3);
+                validators[_idx] = _newValidator;
+                return true;
+        }
+
+	function setRNTAddr(address _newRNTAddr) external managerOnly returns (bool){
+                RNTAddr = _newRNTAddr;
+                return true;
+        }
+
+	function setELEMAddr(address _newELEMAddr) external managerOnly returns (bool){
+                ELEMAddr = _newELEMAddr;
+                return true;
+        }
+
+        function pause() external managerOnly whenNotPaused {
+                paused = true;
+        }
+
+        function unpause() public managerOnly whenPaused {
+                paused = false;
+        }
 }

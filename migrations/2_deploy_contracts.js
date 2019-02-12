@@ -1,15 +1,14 @@
-var ownable = artifacts.require("ERC721/ownership/ownable.sol");
-var addressUtils = artifacts.require("ERC721/utils/address-utils.sol");
-var supportsInterface = artifacts.require("ERC721/utils/supports-interface.sol");
-var safeMath = artifacts.require("ERC721/math/safe-math.sol");
+var addressUtils = artifacts.require("AddressUtils");
+var supportsInterface = artifacts.require("SupportsInterface");
+var safeMath = artifacts.require("SafeMath");
 
-var nfToken = artifacts.require("ERC721/tokens/nf-token.sol");
-var nfTokenEnumerable = artifacts.require("ERC721/tokens/nf-token-enumerable.sol");
-var nfTokenMetadata = artifacts.require("ERC721/tokens/nf-token-metadata.sol");
-var ERT = artifacts.require("ERT.sol");
+var nfToken = artifacts.require("NFToken");
+var nfTokenEnumerable = artifacts.require("NFTokenEnumerable");
+var nfTokenMetadata = artifacts.require("NFTokenMetadata");
+var ELEM = artifacts.require("Elemmire");
+// var EreborTrade = artifacts.require("EreborTrade");
 
 module.exports = function(deployer) {
-    deployer.deploy(ownable);
     deployer.deploy(addressUtils);
     deployer.deploy(supportsInterface);
     deployer.deploy(safeMath);
@@ -23,8 +22,18 @@ module.exports = function(deployer) {
     deployer.deploy(nfTokenEnumerable);
     deployer.deploy(nfTokenMetadata);
 
-    deployer.link(addressUtils, ERT);
-    deployer.link(nfTokenEnumerable, ERT);
-    deployer.link(nfTokenMetadata, ERT);
-    deployer.deploy(ERT);
+    deployer.link(addressUtils, ELEM);
+    deployer.link(nfTokenEnumerable, ELEM);
+    deployer.link(nfTokenMetadata, ELEM);
+    deployer.deploy(ELEM);
+
+    // Todo: the EreborTrade
+    // deployer.link(ELEM, EreborTrade);
+    // deployer.deploy(EreborTrade).then( ()=> {
+    //     let tradeAddr = EreborTrade.address;
+    //     let ELEMAddr = ELEM.address
+    //     EreborTrade.at(tradeAddr).setELEMAddr(ELEMAddr).then(() => {
+    //         return {tradeAddr, ELEMAddr};
+    //     });
+    // });
 };
