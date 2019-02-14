@@ -2,7 +2,6 @@ pragma solidity ^0.5.2;
 // ERC721 adapted from https://github.com/0xcert/ethereum-erc721
 import "./ERC721/tokens/nf-token-enumerable.sol";
 import "./ERC721/tokens/nf-token-metadata.sol";
-// import "./ERC721/ownership/ownable.sol";
 
 
 contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
@@ -21,9 +20,14 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
         nftName = "Elemmire";
         nftSymbol = "ELEM";
         owner = msg.sender;
-        managers[0] = 0xB440ea2780614b3c6a00e512f432785E7dfAFA3E;
-        managers[1] = 0x4AD56641C569C91C64C28a904cda50AE5326Da41;
-        managers[2] = 0x362ea687b8a372a0235466a097e578d55491d37f;
+        // always INITIALIZE ARRAY VALUES!!!
+        managers = [ 0xB440ea2780614b3c6a00e512f432785E7dfAFA3E,
+                     0x4AD56641C569C91C64C28a904cda50AE5326Da41,
+                     0x362ea687b8a372a0235466a097e578d55491d37f,
+                     address(0),
+                     address(0)];
+
+        mining = [address(0), address(0), address(0), address(0), address(0)];
     }
 
     modifier ownerOnly() {
@@ -91,6 +95,14 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
         require(idx == 3 || idx == 4);  // cannot replace the first 3 managers in this contract!
         managers[idx] = _newAddr;
         return true;
+    }
+
+    function queryMining(uint idx) external view returns (address) {
+        return mining[idx];
+    }
+
+    function queryManager(uint idx) external view returns (address) {
+        return managers[idx];
     }
 
 }
