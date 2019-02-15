@@ -5,13 +5,15 @@ import "./erc721-token-receiver.sol";
 import "../math/safe-math.sol";
 import "../utils/supports-interface.sol";
 import "../utils/address-utils.sol";
+import "../../accessControl.sol";
 
 /**
  * @dev Implementation of ERC-721 non-fungible token standard.
  */
 contract NFToken is
   ERC721,
-  SupportsInterface
+  SupportsInterface,
+  accessControl
 {
   using SafeMath for uint256;
   using AddressUtils for address;
@@ -158,6 +160,7 @@ contract NFToken is
   )
     external
   {
+    require(isMemberToken(_tokenId) == false);
     _safeTransferFrom(_from, _to, _tokenId, _data);
   }
 
@@ -177,6 +180,7 @@ contract NFToken is
   )
     external
   {
+    require(isMemberToken(_tokenId) == false);
     _safeTransferFrom(_from, _to, _tokenId, "");
   }
 
@@ -199,6 +203,7 @@ contract NFToken is
     canTransfer(_tokenId)
     validNFToken(_tokenId)
   {
+    require(isMemberToken(_tokenId) == false);
     address tokenOwner = idToOwner[_tokenId];
     require(tokenOwner == _from);
     require(_to != address(0));

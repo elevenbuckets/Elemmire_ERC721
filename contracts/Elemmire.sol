@@ -12,46 +12,16 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
 
     // for now, only 5 managers and 5 minable/burnable contracts
     address public owner;
-    address[5] public mining;
-    address[5] public managers;
     bool public paused = false;
 
     constructor() public {
         nftName = "Elemmire";
         nftSymbol = "ELEM";
         owner = msg.sender;
-        // always INITIALIZE ARRAY VALUES!!!
-        managers = [ 0xB440ea2780614b3c6a00e512f432785E7dfAFA3E,
-                     0x4AD56641C569C91C64C28a904cda50AE5326Da41,
-                     0x362ea687b8a372a0235466a097e578d55491d37f,
-                     address(0),
-                     address(0)];
-
-        mining = [address(0), address(0), address(0), address(0), address(0)];
     }
 
     modifier ownerOnly() {
         require(msg.sender == owner);
-        _;
-    }
-
-    modifier managerOnly() {
-        require(msg.sender != address(0));
-        require(msg.sender == managers[0] ||
-                msg.sender == managers[1] ||
-                msg.sender == managers[2] ||
-                msg.sender == managers[3] ||
-                msg.sender == managers[4]);
-        _;
-    }
-
-    modifier miningOnly() {
-        require(msg.sender != address(0));
-        require(msg.sender == mining[0] ||
-                msg.sender == mining[1] ||
-                msg.sender == mining[2] ||
-                msg.sender == mining[3] ||
-                msg.sender == mining[4]);
         _;
     }
 
@@ -65,12 +35,18 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
         _;
     }
 
+    modifier miningOnly() {
+        require(super.isMiner(msg.sender) == true);
+        _;
+    }
+
     function mint(address _to, uint256 _tokenId, string calldata _uri) external miningOnly whenNotPaused {
         super._mint(_to, _tokenId);
         super._setTokenUri(_tokenId, _uri);
     }
 
     function burn(uint256 _tokenId) external miningOnly {
+        require(isMemberToken(_tokenId) == false);
         super._burn(_tokenId);
     }
 
@@ -84,25 +60,5 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
         paused = false;
     }
 
-    function setMining(address miningAddress, uint8 idx) external managerOnly returns (bool) {
-        require(idx < 5);  // max 5 addr can mint and burn
-        //require(mining[idx] == address(0)); // comment to allow this to be changed many times
-        mining[idx] = miningAddress;
-        return true;
-    }
-
-    function addManager(address _newAddr, uint8 idx) external managerOnly returns (bool) {
-        require(idx == 3 || idx == 4);  // cannot replace the first 3 managers in this contract!
-        managers[idx] = _newAddr;
-        return true;
-    }
-
-    function queryMining(uint idx) external view returns (address) {
-        return mining[idx];
-    }
-
-    function queryManager(uint idx) external view returns (address) {
-        return managers[idx];
-    }
 
 }
