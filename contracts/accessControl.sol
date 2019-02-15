@@ -61,6 +61,14 @@ contract accessControl {
         }
     }
 
+    function isMinerOrManager(address _addr) internal view returns (bool) {
+        if (isMiner(_addr) || isManager(_addr)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     function setMemberCtrAddr(address _memberCtrAddr) public ownerOnly returns (bool) {
         memberCtrAddr = _memberCtrAddr;
         return true;

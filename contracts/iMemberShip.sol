@@ -2,7 +2,7 @@ pragma solidity ^0.5.2;
 
 interface iMemberShip {
 
-    function allocateCoreManagersNFT() external;
+    function allocateCoreManagers() external;
     function putNFTForSale(uint _tokenId) external;
     function tradeTokenToggle() external returns (bool);
     function buyToken() external payable returns (bool);

@@ -10,10 +10,35 @@ const biapi = require('bladeiron_api');
 const BladeIronClient = require('bladeiron_api');
 
 class Elemmire extends BladeIronClient {
-	constructor(rpcport, rpchost, options)
-        {
-		super(rpcport, rpchost, options);
-	}
+    constructor(rpcport, rpchost, options)
+    {
+        super(rpcport, rpchost, options);
+        this.ctrName = 'Elemmire';
+
+        this.totalSupply = () => {
+	    return this.call(this.ctrName)('totalSupply')();
+        };
+
+        this.tokenByIndex = (idx) => {
+            return this.call(this.ctrName)('tokenByIndex')(idx);
+        };
+
+        this.tokenOfOwnerByIndex = (addr, idx) => {
+            return this.call(this.ctrName)('tokenOfOwnerByIndex')(addr, idx);
+        };
+
+        this.balanceOf = (addr) => {
+            return this.call(this.ctrName)('balanceOf')(addr);
+        };
+
+        this.ownerOf = (tokenId) => {
+            return this.call(this.ctrName)('tokenOfOwnerByIndex')(tokenId);
+        };
+
+        this.tokenURI= (tokenId) => {
+            return this.call(this.ctrName)('tokenURI')(tokenId);
+        };
+    }
 }
 
 module.exports = Elemmire;

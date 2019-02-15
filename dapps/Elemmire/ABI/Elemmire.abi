@@ -594,6 +594,16 @@
   },
   {
     "constant": false,
+    "inputs": [],
+    "name": "allocateNFT",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function",
+    "signature": "0xce95ffb6"
+  },
+  {
+    "constant": false,
     "inputs": [
       {
         "name": "_to",

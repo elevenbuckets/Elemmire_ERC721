@@ -10,7 +10,7 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
     // * upgradable
     // * able or easy to integrate with the "Trade" contract + state channels
 
-    // for now, only 5 managers and 5 minable/burnable contracts
+    // for now, only 5 managers and 5 minable/burnable contracts (see accessControl.sol)
     address public owner;
     bool public paused = false;
 
@@ -18,6 +18,7 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
         nftName = "Elemmire";
         nftSymbol = "ELEM";
         owner = msg.sender;
+        allocateNFT();
     }
 
     modifier ownerOnly() {
@@ -36,8 +37,27 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
     }
 
     modifier miningOnly() {
-        require(super.isMiner(msg.sender) == true);
+        require(super.isMiner(msg.sender) == true || msg.sender == owner, "not miner");
         _;
+    }
+
+    modifier minerOrManager() {
+        require(super.isMinerOrManager(msg.sender) == true, "neither miner nor manager");
+        _;
+    }
+
+    function allocateNFT() public ownerOnly {
+        // allocate NFT to managers, only run once in constructor
+        uint[3] memory _tickets = [ uint(0x1111111111111111111111111111111111111111111111111111111111111111),
+                                    uint(0x2222222222222222222222222222222222222222222222222222222222222222),
+                                    uint(0x3333333333333333333333333333333333333333333333333333333333333333)];
+        string[3] memory _uris = [ "1111111111111111111111111111111111111111111111111111111111111111",
+                                   "2222222222222222222222222222222222222222222222222222222222222222",
+                                   "3333333333333333333333333333333333333333333333333333333333333333"];
+        for (uint i=0; i<3; i++){
+            super._mint(managers[i], _tickets[i]);
+            super._setTokenUri(_tickets[i], _uris[i]);
+        }
     }
 
     function mint(address _to, uint256 _tokenId, string calldata _uri) external miningOnly whenNotPaused {
@@ -45,8 +65,7 @@ contract Elemmire is NFTokenEnumerable, NFTokenMetadata {
         super._setTokenUri(_tokenId, _uri);
     }
 
-    function burn(uint256 _tokenId) external miningOnly {
-        require(isMemberToken(_tokenId) == false);
+    function burn(uint256 _tokenId) external minerOrManager {
         super._burn(_tokenId);
     }
 
