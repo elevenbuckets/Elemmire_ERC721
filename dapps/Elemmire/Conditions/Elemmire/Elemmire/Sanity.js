@@ -36,6 +36,10 @@ module.exports =
         {
                 return true;
         },
+        Elemmire_ownerOf_sanity(addr, jobObj)
+        {
+                return true;
+        },
 
 
 }

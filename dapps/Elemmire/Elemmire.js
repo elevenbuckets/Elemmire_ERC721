@@ -32,11 +32,20 @@ class Elemmire extends BladeIronClient {
         };
 
         this.ownerOf = (tokenId) => {
-            return this.call(this.ctrName)('tokenOfOwnerByIndex')(tokenId);
+            return this.call(this.ctrName)('ownerOf')(tokenId);
         };
 
         this.tokenURI= (tokenId) => {
             return this.call(this.ctrName)('tokenURI')(tokenId);
+        };
+
+        this.myTokens = () => {
+            return this.call(this.ctrName)('balanceOf')(this.userWallet).then( (balance) => {
+                let p = [...Array(parseInt(balance))].map((item, index) => {
+                    return this.call(this.ctrName)('tokenOfOwnerByIndex')(this.userWallet, index)
+                });
+                return Promise.all(p);
+            })
         };
     }
 }
